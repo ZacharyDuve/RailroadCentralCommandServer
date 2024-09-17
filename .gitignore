@@ -1,0 +1,6 @@
+
+# Potentially could contain secrets
+config.yaml
+
+# Want to handle the web part in a different project so lets prevent someone from accidentally committing files that will be ignored
+/web/*
