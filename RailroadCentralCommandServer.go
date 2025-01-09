@@ -1,7 +1,7 @@
 package main
 
 import (
-	"database/sql"
+	"context"
 	"log"
 	"time"
 
@@ -11,29 +11,38 @@ import (
 // ...
 
 func main() {
-	// log.Println("Starting Railroad-Central-Command-Server, have fun training")
-	// server.ListenAndServeServer(&config.Config{})
-	db, err := sql.Open("mysql", "railroad_central_command_admin:fIqaSaspumusubAphu4e@tcp(zduvewarehouse.local:3307)/")
-	if err != nil {
-		panic(err)
-	}
-	// See "Important settings" section.
-	db.SetConnMaxLifetime(time.Minute * 3)
-	db.SetMaxOpenConns(10)
-	db.SetMaxIdleConns(10)
-	err = db.Ping()
-	if err != nil {
-		panic(err)
-	} else {
-		log.Println("We pinged the database")
+	log.Println("Starting Railroad-Central-Command-Server, have fun training")
+	rootCTX := context.Background()
+
+	ctx, _ := context.WithTimeout(rootCTX, time.Second*5)
+
+	totalSleepSec := 0
+	for {
+		select {
+		case <-ctx.Done():
+			{
+				log.Println("Ctx canceled")
+				break
+			}
+		default:
+			{
+				log.Println("Sleeping for a second", totalSleepSec)
+				totalSleepSec++
+				time.Sleep(time.Second)
+			}
+		}
 	}
 
-	res, err := db.Query("CREATE TALE * FROM USERS")
-	if err != nil {
-		panic(err)
-	} else {
-		log.Println("We got results")
+	log.Println("All done")
+	select {
+	case <-rootCTX.Done():
+		{
+			log.Println("Was done at the root as well")
+		}
+	default:
+		{
+			log.Println("only child was canceled")
+		}
 	}
 
-	log.Println(res.Columns())
 }
