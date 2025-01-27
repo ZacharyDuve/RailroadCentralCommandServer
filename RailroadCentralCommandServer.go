@@ -44,5 +44,4 @@ func main() {
 			log.Println("only child was canceled")
 		}
 	}
-
 }

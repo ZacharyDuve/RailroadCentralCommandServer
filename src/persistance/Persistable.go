@@ -13,13 +13,13 @@ import (
 type TypeName string
 
 // PrimaryKey identifies each item of the same type from each other.
-//type PrimaryKey
+// type PrimaryKey []byte
 
 // Persistable defines what a struct needs to implement to be persisted in some way.
-type Persistable interface {
+type Persistable[K comparable] interface {
 	TypeName() TypeName
 	//PKey returns the primary key for the persisable item. This should be unique accross all of the items of the same type
-	UUID() uuid.UUID
+	PKey() Key[K]
 	CreateTime() time.Time
 	UpdateTime() time.Time
 	UpdateVersion() uint32

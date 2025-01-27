@@ -1,5 +1,5 @@
 package persistance
 
-type Storer[T Persistable] interface {
-	Store([]T) error
+type Storer[T Persistable[K], K comparable] interface {
+	StoreNew([]T) error
 }
