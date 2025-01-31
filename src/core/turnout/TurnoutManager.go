@@ -1,8 +1,6 @@
 package turnout
 
 import (
-	"errors"
-
 	"github.com/ZacharyDuve/RailroadCentralCommandServer/src/core/turnout/turnouttype"
 )
 
@@ -38,7 +36,7 @@ func (this *turnoutImpl) Type() turnouttype.TurnoutType {
 }
 
 func (this *turnoutImpl) Positions() []TurnoutPosition {
-	panic(errors.ErrUnsupported)
+	return this.positions
 }
 
 type turnoutPositionImpl struct {
@@ -57,7 +55,7 @@ func (this *turnoutPositionImpl) CurrentState() TurnoutPositionState {
 	return this.state
 }
 
-func NewTurnoutManager(idGen TurnoutIDGenerator, ttLib turnouttype.TurnoutTypeLibrary) *turnoutManager {
+func NewTurnoutManager(idGen TurnoutIDGenerator) *turnoutManager {
 	return &turnoutManager{idGen: idGen, turnouts: make([]Turnout, 0)}
 }
 
