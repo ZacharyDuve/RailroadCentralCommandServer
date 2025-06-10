@@ -1,14 +1,19 @@
 package turnout
 
 import (
-	"github.com/ZacharyDuve/RailroadCentralCommandServer/src/core/turnout/turnouttype"
+	"github.com/ZacharyDuve/godatacollections"
 )
 
-type turnoutManager struct {
-	idGen TurnoutIDGenerator
-	//turnoutLoadStorer persistance.LoadStorer[*Turnout]
-	turnouts []Turnout
-}
+var (
+	unsetPositions       = []TurnoutPosition{PositionUnSet}
+	leftHandedPositions  = []TurnoutPosition{PositionLeft, PositionThrough}
+	rightHandedPositions = []TurnoutPosition{PositionThrough, PositionRight}
+	wyePositions         = []TurnoutPosition{PositionLeft, PositionRight}
+	threeWayPositions    = []TurnoutPosition{PositionLeft, PositionThrough, PositionRight}
+	singleSlipPositions  = []TurnoutPosition{PositionTrackA, PositionTrackB, PositionDivergeTrackALeft}
+	doubleSlipPositions  = []TurnoutPosition{PositionTrackA, PositionTrackB, PositionDivergeTrackALeft, PositionDivergeTrackBLeft}
+	crossoverPositions   = []TurnoutPosition{PositionThrough, PositionCrossover}
+)
 
 // turnoutImpl is the backing implementation of the turnout type this type ties together with an turnout manager
 // NOTE: This hidden to prevent creation exeternal of a turnout manager
@@ -18,9 +23,7 @@ type turnoutImpl struct {
 
 	id    TurnoutID
 	name  string
-	tType turnouttype.TurnoutType
-
-	positions []TurnoutPosition
+	tType TurnoutType
 }
 
 func (this *turnoutImpl) ID() TurnoutID {
@@ -31,46 +34,49 @@ func (this *turnoutImpl) Name() string {
 	return this.name
 }
 
-func (this *turnoutImpl) Type() turnouttype.TurnoutType {
+func (this *turnoutImpl) Type() TurnoutType {
 	return this.tType
 }
 
 func (this *turnoutImpl) Positions() []TurnoutPosition {
-	return this.positions
+	switch this.tType {
+	case TypeLeftHanded:
+		return leftHandedPositions
+	case TypeRightHanded:
+		return rightHandedPositions
+	case TypeWye:
+		return wyePositions
+	case TypeThreeWay:
+		return threeWayPositions
+	case TypeSingleSlip:
+		return singleSlipPositions
+	case TypeDoubleSlip:
+		return doubleSlipPositions
+	case TypeCrossover:
+		return crossoverPositions
+	default:
+		return unsetPositions
+	}
 }
 
-type turnoutPositionImpl struct {
-	// reference back to the turnout that this position is associated with
-	t *turnoutImpl
-
-	name  string
-	state TurnoutPositionState
+type turnoutManager struct {
+	idGen    TurnoutIDGenerator
+	turnouts godatacollections.Set[TurnoutID, Turnout]
 }
 
-func (this *turnoutPositionImpl) Name() string {
-	return this.name
+func NewTurnoutManager(idGen TurnoutIDGenerator, turnoutStorage godatacollections.Set[TurnoutID, Turnout]) *turnoutManager {
+
+	return &turnoutManager{idGen: idGen, turnouts: turnoutStorage}
 }
 
-func (this *turnoutPositionImpl) CurrentState() TurnoutPositionState {
-	return this.state
-}
-
-func NewTurnoutManager(idGen TurnoutIDGenerator) *turnoutManager {
-	return &turnoutManager{idGen: idGen, turnouts: make([]Turnout, 0)}
-}
-
-func (this *turnoutManager) NewTurnout(tType turnouttype.TurnoutType) (Turnout, error) {
+func (this *turnoutManager) NewTurnout(tType TurnoutType) (Turnout, error) {
 	id, err := this.idGen.NewID()
 
 	if err != nil {
 		return nil, err
 	}
 
-	t := &turnoutImpl{tM: this, id: id, tType: tType, positions: make([]TurnoutPosition, 0)}
-
-	for _, curPositionName := range tType.PositionNames() {
-		t.positions = append(t.positions, &turnoutPositionImpl{t: t, name: curPositionName, state: UnSet})
-	}
+	t := &turnoutImpl{tM: this, id: id, tType: tType}
 
 	return t, nil
 

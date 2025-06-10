@@ -1,7 +1,5 @@
 package turnout
 
-import "github.com/ZacharyDuve/RailroadCentralCommandServer/src/core/turnout/turnouttype"
-
 // TurnoutID is the Id of a specific turnout on the railroad
 type TurnoutID uint32
 
@@ -11,6 +9,42 @@ type TurnoutIDGenerator interface {
 	NewID() (TurnoutID, error)
 }
 
+type TurnoutType uint8
+
+const (
+	TypeUnSet TurnoutType = iota
+	TypeLeftHanded
+	TypeRightHanded
+	TypeWye
+	TypeThreeWay
+	TypeSingleSlip
+	TypeDoubleSlip
+	TypeCrossover
+)
+
+// func CompTurnoutType(a, b TurnoutType) int {
+// 	if a < b {
+// 		return -1
+// 	} else if a > b {
+// 		return 1
+// 	}
+// 	return 0
+// }
+
+type TurnoutPosition uint8
+
+const (
+	PositionUnSet TurnoutPosition = iota
+	PositionThrough
+	PositionLeft
+	PositionRight
+	PositionTrackA
+	PositionTrackB
+	PositionDivergeTrackALeft
+	PositionDivergeTrackBLeft
+	PositionCrossover
+)
+
 // Turnout is a device that allows for a collection of switch machines to be set together
 // Also allows for easier human interaction with physical turnout
 type Turnout interface {
@@ -19,9 +53,25 @@ type Turnout interface {
 	// Name is the human readable name of it
 	Name() string
 	// Type is the type of turnout that this is
-	Type() turnouttype.TurnoutType
+	Type() TurnoutType
 	// Positions allow for one to get a list of all available positions that the turnout has
 	Positions() []TurnoutPosition
+}
+
+func CompTurnoutID(a, b TurnoutID) int {
+	if a < b {
+		return -1
+	} else if a > b {
+		return 1
+	}
+	return 0
+}
+
+func TurnoutIDFromTurnout(t Turnout) TurnoutID {
+	if t == nil {
+		panic("turnout cannot be nil")
+	}
+	return t.ID()
 }
 
 // TurnoutPositionState is an enum of the possible states that a position could be in
@@ -37,11 +87,13 @@ const (
 	Set
 )
 
-// TurnoutPosition is a container attributes about a specific position
-type TurnoutPosition interface {
-	// Name of the position
-	// All positions on a single turnout should have unique names
-	Name() string
-	// State is the current state of the given position
-	CurrentState() TurnoutPositionState
-}
+// // TurnoutPosition is a container attributes about a specific position
+// type TurnoutPosition interface {
+// 	// Name of the position
+// 	// All positions on a single turnout should have unique names
+// 	Name() string
+// 	// CurrentState is the current state of the given position
+// 	CurrentState() TurnoutPositionState
+// 	// LinkedTDSPositionIDs are the ids of the device positions that need to be set for this Turnout to be set to this position
+// 	LinkedTDSPositionIDs() []TDSDevicePositionID
+// }
