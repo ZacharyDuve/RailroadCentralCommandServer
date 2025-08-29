@@ -1,5 +1,7 @@
 package routing
 
+import "errors"
+
 type JunctionType string
 
 type JunctionLead struct {
@@ -8,6 +10,13 @@ type JunctionLead struct {
 	ownedByJunction Junction
 	active          bool
 }
+
+const (
+	JUNCTION_LEAD_NAME_ENTRANCE      string = "entrance"
+	JUNCTION_LEAD_NAME_THROUGH       string = "through"
+	JUNCTION_LEAD_NAME_DIVERGE_LEFT  string = "diverge left"
+	JUNCTION_LEAD_NAME_DIVERGE_RIGHT string = "diverge right"
+)
 
 type JunctionRoute struct {
 	// Is a list of pairs of points that are connections
@@ -24,14 +33,41 @@ type Junction interface {
 	SetActiveJunctionRoute(*JunctionRoute) error
 }
 
+// A motor that controls the points on a junction
+type JunctionPointMotor struct {
+}
+
 type jImpl struct {
+	jType       JunctionType
 	leads       []JunctionLead
 	routes      []JunctionRoute
 	activeRoute *JunctionRoute
 }
 
-func newjImpl(nLeads int, nRoutes int) jImpl {
-	return jImpl{leads: make([]JunctionLead, 0, nLeads), routes: make([]JunctionRoute, 0, nRoutes)}
+// Most Turnouts are simple single entrance with two other leads.
+// A route between the entrance and each of the other leads.
+// This is to simplify creation
+func newjImplWith3LeadsAnd2Routes(outAName, outBName string) *jImpl {
+	j := &jImpl{leads: make([]JunctionLead, 0, 3), routes: make([]JunctionRoute, 0, 2)}
+
+	entranceLead := JunctionLead{name: JUNCTION_LEAD_NAME_ENTRANCE, ownedByJunction: j}
+	leadA := JunctionLead{name: outAName, ownedByJunction: j}
+	leadB := JunctionLead{name: outBName, ownedByJunction: j}
+
+	j.leads = append(j.leads, entranceLead)
+	j.leads = append(j.leads, leadA)
+	j.leads = append(j.leads, leadB)
+
+	divergeRoute := JunctionRoute{connections: [][2]*JunctionLead{[2]*JunctionLead{&entranceLead, &leadA}}}
+	j.routes = append(j.routes, divergeRoute)
+	throughRoute := JunctionRoute{connections: [][2]*JunctionLead{[2]*JunctionLead{&entranceLead, &leadB}}}
+	j.routes = append(j.routes, throughRoute)
+
+	return j
+}
+
+func (this *jImpl) JunctionType() JunctionType {
+	return this.jType
 }
 
 func (this *jImpl) JunctionLeads() []*JunctionLead {
@@ -56,32 +92,34 @@ func (this *jImpl) AvailableJunctionRoutes() []*JunctionRoute {
 }
 
 func (this *jImpl) SetActiveJunctionRoute(r *JunctionRoute) error {
-	panic
+
+	hasRoute := false
+
+	for _, curR := range this.routes {
+		if &curR == r {
+			// If we are pointing to the same thing
+			hasRoute = true
+			break
+		}
+	}
+
+	if !hasRoute {
+		return errors.New("unable to set route as it is not part of this junction")
+	}
+
+	this.activeRoute = r
+
+	return nil
 }
 
-type LeftHandedTurnout struct {
-	jImpl
+func NewWyeTurnout() Junction {
+	return newjImplWith3LeadsAnd2Routes(JUNCTION_LEAD_NAME_DIVERGE_LEFT, JUNCTION_LEAD_NAME_DIVERGE_RIGHT)
 }
 
-func NewLeftHandedTurnout() *LeftHandedTurnout {
-	j := &LeftHandedTurnout{jImpl: newjImpl(3, 2)}
-	entranceLead := JunctionLead{name: "entrance", ownedByJunction: j}
-	leftLead := JunctionLead{name: "diverge left", ownedByJunction: j}
-	throughLead := JunctionLead{name: "through", ownedByJunction: j}
-
-	j.leads = append(j.leads, entranceLead)
-	j.leads = append(j.leads, leftLead)
-	j.leads = append(j.leads, throughLead)
-
-	divergeRoute := JunctionRoute{connections: [][2]*JunctionLead{[2]*JunctionLead{&entranceLead, &leftLead}}}
-	j.routes = append(j.routes, divergeRoute)
-	throughRoute := JunctionRoute{connections: [][2]*JunctionLead{[2]*JunctionLead{&entranceLead, &throughLead}}}
-	j.routes = append(j.routes, throughRoute)
-	j.activeRoute = &throughRoute
-
-	return j
+func NewLeftHandedTurnout() Junction {
+	return newjImplWith3LeadsAnd2Routes(JUNCTION_LEAD_NAME_DIVERGE_LEFT, JUNCTION_LEAD_NAME_THROUGH)
 }
 
-func (this *LeftHandedTurnout) JunctionType() JunctionType {
-	return JunctionType("Left Handed")
+func NewRightHandedTurnout() Junction {
+	return newjImplWith3LeadsAnd2Routes(JUNCTION_LEAD_NAME_THROUGH, JUNCTION_LEAD_NAME_DIVERGE_RIGHT)
 }
