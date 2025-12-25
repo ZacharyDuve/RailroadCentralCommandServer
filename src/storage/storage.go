@@ -19,8 +19,8 @@ const (
 	ErrFmtMsgUnableToDeleteDoesNotExist string = "unable to delete %s as it does not exist"
 )
 
-type Storable[T cmp.Ordered] interface {
-	ID() T
+type Storable[I cmp.Ordered] interface {
+	ID() I
 	TypeName() string
 }
 
