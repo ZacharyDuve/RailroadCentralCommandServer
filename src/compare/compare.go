@@ -10,6 +10,6 @@ const (
 
 // Comparable
 type Comparable[T any] interface {
-	Equalable[T]
+	Equality[T]
 	Compare(T) CompareResult
 }

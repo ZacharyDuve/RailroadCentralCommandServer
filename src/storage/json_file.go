@@ -1,10 +1,14 @@
 package storage
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
+	"os"
 	"path"
 
-	"github.com/ZacharyDuve/RailroadCentralCommandServer/src/id"
+	"github.com/ZacharyDuve/RailroadCentralCommandServer/src/identifiable"
 )
 
 const (
@@ -12,9 +16,12 @@ const (
 	ErrMsgObjectTypeNameMissing = "error, objectTypeName is required to be not empty"
 )
 
+type FileOpenFunc func(string) (io.ReadWriteCloser, error)
+
 // JSONStorage stores and saves the objects as JSON files.
-type JSONStorage[T id.IDable] struct {
-	filesPath string
+type JSONStorage[I any, T identifiable.ID[I]] struct {
+	filesPath    string
+	fileOpenFunc FileOpenFunc
 }
 
 // NewJSONStorage implements the Storage interface and allows storing objects as json files
@@ -22,7 +29,7 @@ type JSONStorage[T id.IDable] struct {
 // objectTypeName is the name that one wants to give the object type. This should be unique for all types in the application.
 // The sub directory in the basePath will be named this
 
-func NewJSONStorage[T id.IDable](basePath, objectTypeName string) (Storage[T], error) {
+func NewJSONStorage[I any, T identifiable.ID[I]](basePath, objectTypeName string, fileOFunction FileOpenFunc) (Storage[I, T], error) {
 	if basePath == "" {
 		return nil, errors.New(ErrMsgBasePathMissing)
 	}
@@ -31,16 +38,28 @@ func NewJSONStorage[T id.IDable](basePath, objectTypeName string) (Storage[T], e
 	}
 
 	filesPath := path.Join(basePath, objectTypeName)
-	return &JSONStorage[T]{filesPath: filesPath}, nil
+	return &JSONStorage[I, T]{filesPath: filesPath}, nil
 }
 
-func (js *JSONStorage[T]) Save(obj *T) error {
-	// 1) Check to ensure that
-	return nil
+func (js *JSONStorage[I, T]) Save(obj T) error {
+
+	filePath := fmt.Sprintf("%s%q%s", js.filesPath, os.PathSeparator, obj.ID())
+
+	f, err := js.fileOpenFunc(filePath)
+
+	if err == nil {
+		err = json.NewEncoder(f).Encode(obj)
+	}
+
+	return err
 }
 
-func (js *JSONStorage[T]) Load(id id.ID) (*T, error) {
+func (js *JSONStorage[I, T]) Load(id identifiable.ID[I]) (T, error) {
 	// Implement the logic to load the object with the specified ID from a JSON file in the specified directory
 	// You can use the filesPath field of the JSONStorage struct to determine the directory where the file should be loaded from
-	return nil, nil
+	return *new(T), errors.ErrUnsupported
+}
+
+func (js *JSONStorage[I, T]) Delete(id identifiable.ID[I]) error {
+	return errors.ErrUnsupported
 }
