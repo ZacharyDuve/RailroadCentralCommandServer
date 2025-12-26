@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path"
 )
@@ -32,12 +31,30 @@ type FileManager interface {
 type OSFileManager struct {
 }
 
-type FileOpenFunc func(string) (io.ReadWriteCloser, error)
+func (o OSFileManager) Create(s string) (*os.File, error) {
+	return os.Create(s)
+}
+
+func (o OSFileManager) Open(s string) (*os.File, error) {
+	return os.Open(s)
+}
+
+func (o OSFileManager) Remove(s string) error {
+	return os.Remove(s)
+}
+
+func (o OSFileManager) Mkdir(s string, p os.FileMode) error {
+	return os.Mkdir(s, p)
+}
+
+func (o OSFileManager) MkdirAll(s string, p os.FileMode) error {
+	return os.MkdirAll(s, p)
+}
 
 // JSONStorage stores and saves the objects as JSON files.
 type JSONStorage[I cmp.Ordered, T Storable[I]] struct {
-	filesPath    string
-	fileOpenFunc FileOpenFunc
+	filesPath   string
+	fileManager FileManager
 }
 
 // NewJSONStorage implements the Storage interface and allows storing objects as json files
@@ -45,7 +62,7 @@ type JSONStorage[I cmp.Ordered, T Storable[I]] struct {
 // objectTypeName is the name that one wants to give the object type. This should be unique for all types in the application.
 // The sub directory in the basePath will be named this
 
-func NewJSONStorage[I cmp.Ordered, T Storable[I]](basePath, objectTypeName string, fileOFunction FileOpenFunc) (Storage[I, T], error) {
+func NewJSONStorage[I cmp.Ordered, T Storable[I]](basePath, objectTypeName string, fM FileManager) (Storage[I, T], error) {
 	if basePath == "" {
 		return nil, errors.New(ErrMsgBasePathMissing)
 	}
@@ -70,12 +87,12 @@ func (js *JSONStorage[I, T]) Save(obj T) error {
 	return err
 }
 
-func (js *JSONStorage[I, T]) Load(id Storable[I]) (T, error) {
+func (js *JSONStorage[I, T]) Load(I) (T, error) {
 	// Implement the logic to load the object with the specified ID from a JSON file in the specified directory
 	// You can use the filesPath field of the JSONStorage struct to determine the directory where the file should be loaded from
 	return *new(T), errors.ErrUnsupported
 }
 
-func (js *JSONStorage[I, T]) Delete(id Storable[I]) error {
+func (js *JSONStorage[I, T]) Delete(I) error {
 	return errors.ErrUnsupported
 }
