@@ -1,38 +1,36 @@
 package storage
 
 import (
-	"io"
+	"os"
 	"testing"
-
-	"github.com/ZacharyDuve/RailroadCentralCommandServer/src/compare"
 )
 
 type mockData struct {
-	d int
+	id uint
 }
 
-func (m *mockData) ID() int {
-	return m.d
+func (m *mockData) ID() uint {
+	return m.id
 }
 
-func (m *mockData) Compare(o *mockData) compare.CompareResult {
-	if m.d < o.d {
-		return compare.LessThan
-	} else if m.d > o.d {
-		return compare.GreaterThan
-	} else {
-		return compare.Equal
-	}
+func (m *mockData) TypeName() string {
+	return "mockData"
 }
 
-func (m *mockData) Equal(o *mockData) bool {
-	return m.d == o.d
+type mockFileManager struct {
+	FileManager
 }
 
-func mockOpenFile(r io.ReadWriteCloser, err error) (io.ReadWriteCloser, error) {
-	return r, err
+func (mFM *mockFileManager) MkdirAll(p string, m os.FileMode) error {
+	return nil
 }
 
 func TestJSONStorageImplementsStorage(t *testing.T) {
-	var _ Storage[*mockData] = NewJSONStorage[int]("hey", "int")
+	s, _ := NewJSONStorage[uint, *mockData]("bob", &mockFileManager{})
+
+	switch s.(type) {
+	case Storage[uint, *mockData]:
+		return
+	}
+	t.Fail()
 }

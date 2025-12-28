@@ -12,6 +12,8 @@ import (
 const (
 	ErrMsgBasePathMissing       = "error, basePath is required to be not empty"
 	ErrMsgObjectTypeNameMissing = "error, objectTypeName is required to be not empty"
+
+	defaultFilePermissions = 664
 )
 
 // FileManager is something that allows for creating, opening, removing files as well as directories
@@ -62,23 +64,29 @@ type JSONStorage[I cmp.Ordered, T Storable[I]] struct {
 // objectTypeName is the name that one wants to give the object type. This should be unique for all types in the application.
 // The sub directory in the basePath will be named this
 
-func NewJSONStorage[I cmp.Ordered, T Storable[I]](basePath, objectTypeName string, fM FileManager) (Storage[I, T], error) {
+func NewJSONStorage[I cmp.Ordered, T Storable[I]](basePath string, fM FileManager) (Storage[I, T], error) {
 	if basePath == "" {
 		return nil, errors.New(ErrMsgBasePathMissing)
 	}
-	if objectTypeName == "" {
-		return nil, errors.New(ErrMsgObjectTypeNameMissing)
+
+	// So we don't have to pass in the typename
+	t := *new(T)
+
+	filesPath := path.Join(basePath, t.TypeName())
+
+	// Need to ensure that the directories required are built out
+	if err := fM.MkdirAll(filesPath, os.FileMode(defaultFilePermissions)); err != nil {
+		return nil, err
 	}
 
-	filesPath := path.Join(basePath, objectTypeName)
 	return &JSONStorage[I, T]{filesPath: filesPath}, nil
 }
 
 func (js *JSONStorage[I, T]) Save(obj T) error {
 
-	filePath := fmt.Sprintf("%s%q%s", js.filesPath, os.PathSeparator, obj.ID())
+	filePath := path.Join(js.filesPath, fmt.Sprint(obj.ID()))
 
-	f, err := js.fileOpenFunc(filePath)
+	f, err := js.fileManager.Open(filePath)
 
 	if err == nil {
 		err = json.NewEncoder(f).Encode(obj)
