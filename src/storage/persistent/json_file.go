@@ -1,12 +1,14 @@
-package storage
+package persistent
 
 import (
-	"cmp"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"path"
+
+	"github.com/google/uuid"
+
+	"github.com/ZacharyDuve/RailroadCentralCommandServer/src/storage"
 )
 
 const (
@@ -54,7 +56,7 @@ func (o OSFileManager) MkdirAll(s string, p os.FileMode) error {
 }
 
 // JSONStorage stores and saves the objects as JSON files.
-type JSONStorage[I cmp.Ordered, T Storable[I]] struct {
+type JSONStorage[T storage.Storable] struct {
 	filesPath   string
 	fileManager FileManager
 }
@@ -64,27 +66,22 @@ type JSONStorage[I cmp.Ordered, T Storable[I]] struct {
 // objectTypeName is the name that one wants to give the object type. This should be unique for all types in the application.
 // The sub directory in the basePath will be named this
 
-func NewJSONStorage[I cmp.Ordered, T Storable[I]](basePath string, fM FileManager) (Storage[I, T], error) {
-	if basePath == "" {
+func NewJSONStorage[T storage.Storable](path string, fM FileManager) (storage.Storage[T], error) {
+	if path == "" {
 		return nil, errors.New(ErrMsgBasePathMissing)
 	}
 
-	// So we don't have to pass in the typename
-	t := *new(T)
-
-	filesPath := path.Join(basePath, t.TypeName())
-
 	// Need to ensure that the directories required are built out
-	if err := fM.MkdirAll(filesPath, os.FileMode(defaultFilePermissions)); err != nil {
+	if err := fM.MkdirAll(path, os.FileMode(defaultFilePermissions)); err != nil {
 		return nil, err
 	}
 
-	return &JSONStorage[I, T]{filesPath: filesPath}, nil
+	return &JSONStorage[T]{filesPath: path}, nil
 }
 
-func (js *JSONStorage[I, T]) Save(obj T) error {
+func (js *JSONStorage[T]) Save(obj T) error {
 
-	filePath := path.Join(js.filesPath, fmt.Sprint(obj.ID()))
+	filePath := path.Join(js.filesPath, obj.UUID().String())
 
 	f, err := js.fileManager.Open(filePath)
 
@@ -95,12 +92,12 @@ func (js *JSONStorage[I, T]) Save(obj T) error {
 	return err
 }
 
-func (js *JSONStorage[I, T]) Load(I) (T, error) {
-	// Implement the logic to load the object with the specified ID from a JSON file in the specified directory
+func (js *JSONStorage[T]) Load(id uuid.UUID) (T, error) {
+	// id uuid.UUIDmplement the logic to load the object with the specified id uuid.UUIDD from a JSON file in the specified directory
 	// You can use the filesPath field of the JSONStorage struct to determine the directory where the file should be loaded from
 	return *new(T), errors.ErrUnsupported
 }
 
-func (js *JSONStorage[I, T]) Delete(I) error {
+func (js *JSONStorage[T]) Delete(id uuid.UUID) error {
 	return errors.ErrUnsupported
 }
