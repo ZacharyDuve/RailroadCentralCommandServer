@@ -1,7 +1,7 @@
 package storage
 
 import (
-	"github.com/google/uuid"
+	"cmp"
 )
 
 // type SaveMode uint8
@@ -21,12 +21,12 @@ const (
 	ErrFmtMsgUnableToDeleteDoesNotExist string = "unable to delete %s as it does not exist"
 )
 
-type Storable interface {
-	UUID() uuid.UUID
+type Storable[I cmp.Ordered] interface {
+	ID() I
 }
 
 // Storage is the interface that describes something that can store and retrieve an object. Object must implement id.IDable
-type Storage[T Storable] interface {
+type Storage[I cmp.Ordered, T Storable[I]] interface {
 	// Save attempts to save T as the storage defines. Currently either create or overwrite
 	// An error could occur and be returned.
 	Save(T) error
@@ -34,9 +34,9 @@ type Storage[T Storable] interface {
 	// Load attempts to load T back from storage.
 	// On success T is returned with nil error
 	// Failure then error is returned
-	Load(uuid.UUID) (T, error)
+	Load(I) (T, error)
 
 	// Delete attempts to delete T from storage so future loads will not find it.
 	// Failure to delete returns error
-	Delete(uuid.UUID) error
+	Delete(I) error
 }

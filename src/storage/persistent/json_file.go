@@ -1,12 +1,12 @@
 package persistent
 
 import (
+	"cmp"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path"
-
-	"github.com/google/uuid"
 
 	"github.com/ZacharyDuve/RailroadCentralCommandServer/src/storage"
 )
@@ -15,7 +15,8 @@ const (
 	ErrMsgBasePathMissing       = "error, basePath is required to be not empty"
 	ErrMsgObjectTypeNameMissing = "error, objectTypeName is required to be not empty"
 
-	defaultFilePermissions = 664
+	// Needs to be octal or stuff get wild
+	defaultFilePermissions = 0740
 )
 
 // FileManager is something that allows for creating, opening, removing files as well as directories
@@ -23,24 +24,19 @@ const (
 
 type FileManager interface {
 	// Files
-	Create(string) (*os.File, error)
-	Open(string) (*os.File, error)
-	Remove(string) error
+	OpenFile(path string, flags int, perm os.FileMode) (*os.File, error)
+	Remove(path string) error
 
 	// Directories
-	Mkdir(string, os.FileMode) error
-	MkdirAll(string, os.FileMode) error
+	Mkdir(path string, perm os.FileMode) error
+	MkdirAll(path string, perm os.FileMode) error
 }
 
 type OSFileManager struct {
 }
 
-func (o OSFileManager) Create(s string) (*os.File, error) {
-	return os.Create(s)
-}
-
-func (o OSFileManager) Open(s string) (*os.File, error) {
-	return os.Open(s)
+func (o OSFileManager) OpenFile(path string, flags int, perm os.FileMode) (*os.File, error) {
+	return os.OpenFile(path, flags, perm)
 }
 
 func (o OSFileManager) Remove(s string) error {
@@ -56,7 +52,7 @@ func (o OSFileManager) MkdirAll(s string, p os.FileMode) error {
 }
 
 // JSONStorage stores and saves the objects as JSON files.
-type JSONStorage[T storage.Storable] struct {
+type JSONStorage[I cmp.Ordered, T storage.Storable[I]] struct {
 	filesPath   string
 	fileManager FileManager
 }
@@ -66,24 +62,24 @@ type JSONStorage[T storage.Storable] struct {
 // objectTypeName is the name that one wants to give the object type. This should be unique for all types in the application.
 // The sub directory in the basePath will be named this
 
-func NewJSONStorage[T storage.Storable](path string, fM FileManager) (storage.Storage[T], error) {
+func NewJSONStorage[I cmp.Ordered, T storage.Storable[I]](path string, fM FileManager) (storage.Storage[I, T], error) {
 	if path == "" {
 		return nil, errors.New(ErrMsgBasePathMissing)
 	}
 
 	// Need to ensure that the directories required are built out
-	if err := fM.MkdirAll(path, os.FileMode(defaultFilePermissions)); err != nil {
+	if err := fM.MkdirAll(path, defaultFilePermissions); err != nil {
 		return nil, err
 	}
 
-	return &JSONStorage[T]{filesPath: path}, nil
+	return &JSONStorage[I, T]{filesPath: path, fileManager: fM}, nil
 }
 
-func (js *JSONStorage[T]) Save(obj T) error {
+func (js *JSONStorage[I, T]) Save(obj T) error {
 
-	filePath := path.Join(js.filesPath, obj.UUID().String())
+	filePath := path.Join(js.filesPath, fmt.Sprintf("%v.json", obj.ID()))
 
-	f, err := js.fileManager.Open(filePath)
+	f, err := js.fileManager.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, defaultFilePermissions)
 
 	if err == nil {
 		err = json.NewEncoder(f).Encode(obj)
@@ -92,12 +88,22 @@ func (js *JSONStorage[T]) Save(obj T) error {
 	return err
 }
 
-func (js *JSONStorage[T]) Load(id uuid.UUID) (T, error) {
-	// id uuid.UUIDmplement the logic to load the object with the specified id uuid.UUIDD from a JSON file in the specified directory
-	// You can use the filesPath field of the JSONStorage struct to determine the directory where the file should be loaded from
-	return *new(T), errors.ErrUnsupported
+func (js *JSONStorage[I, T]) Load(id I) (T, error) {
+	var t T
+
+	filePath := path.Join(js.filesPath, fmt.Sprintf("%v.json", id))
+
+	f, err := js.fileManager.OpenFile(filePath, os.O_RDONLY, defaultFilePermissions)
+
+	if err == nil {
+		err = json.NewDecoder(f).Decode(&t)
+	}
+
+	return t, err
 }
 
-func (js *JSONStorage[T]) Delete(id uuid.UUID) error {
-	return errors.ErrUnsupported
+func (js *JSONStorage[I, T]) Delete(id I) error {
+	filePath := path.Join(js.filesPath, fmt.Sprintf("%v.json", id))
+
+	return js.fileManager.Remove(filePath)
 }
