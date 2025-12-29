@@ -15,7 +15,6 @@ const (
 	ErrMsgBasePathMissing       = "error, basePath is required to be not empty"
 	ErrMsgObjectTypeNameMissing = "error, objectTypeName is required to be not empty"
 
-	// Needs to be octal or stuff get wild
 	defaultFilePermissions = 0740
 )
 
