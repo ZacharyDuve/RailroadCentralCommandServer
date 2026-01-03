@@ -13,6 +13,7 @@ import (
 type shardedCache[I cmp.Ordered, T storage.Storable[I]] struct {
 	hashSeed maphash.Seed
 	shards   []cacheShard[I, T]
+	fronts   storage.Storage[I, T]
 }
 
 type cacheShard[I cmp.Ordered, T storage.Storable[I]] struct {
