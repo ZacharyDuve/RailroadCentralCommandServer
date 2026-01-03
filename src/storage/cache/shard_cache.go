@@ -16,8 +16,8 @@ type shardedCache[I cmp.Ordered, T storage.Storable[I]] struct {
 }
 
 type cacheShard[I cmp.Ordered, T storage.Storable[I]] struct {
-	shardLock sync.Mutex
-	items     []T
+	shardLock sync.RWMutex
+	items     map[I]T
 }
 
 func NewShardedCache[I cmp.Ordered, T storage.Storable[I]](numShards int) (storage.Storage[I, T], error) {
@@ -36,16 +36,19 @@ func NewShardedCache[I cmp.Ordered, T storage.Storable[I]](numShards int) (stora
 func (sc *shardedCache[I, T]) Save(t T) error {
 	index := sc.calcShardIndex(t.ID())
 
-	return sc.shards[index].save(T)
+	return sc.shards[index].save(t)
 }
 
-func (sc *shardedCache[I, T]) Load(I) (T, error) {
-	var t T = *new(T)
-	return t, errors.ErrUnsupported
+func (sc *shardedCache[I, T]) Load(id I) (T, error) {
+	index := sc.calcShardIndex(id)
+
+	return sc.shards[index].load(id)
 }
 
-func (sc *shardedCache[I, T]) Delete(I) error {
-	return errors.ErrUnsupported
+func (sc *shardedCache[I, T]) Delete(id I) error {
+	index := sc.calcShardIndex(id)
+
+	return sc.shards[index].delete(id)
 }
 
 func (sc *shardedCache[I, T]) calcShardIndex(id I) int {
@@ -59,6 +62,39 @@ func (sc *shardedCache[I, T]) calcShardIndex(id I) int {
 
 func (cs *cacheShard[I, T]) save(t T) error {
 	cs.shardLock.Lock()
+
+	cs.items[t.ID()] = t
+
+	cs.shardLock.Unlock()
+
+	return nil
+}
+
+func (cs *cacheShard[I, T]) load(id I) (T, error) {
+
+	cs.shardLock.RLock()
+
+	t, ok := cs.items[id]
+
+	cs.shardLock.RUnlock()
+
+	if !ok {
+		return t, fmt.Errorf(storage.ErrFmtMsgUnableToLoadDoesNotExist, id)
+	}
+
+	return t, nil
+}
+
+func (cs *cacheShard[I, T]) delete(id I) error {
+	cs.shardLock.Lock()
+
+	_, ok := cs.items[id]
+
+	if !ok {
+		return fmt.Errorf(storage.ErrFmtMsgUnableToDeleteDoesNotExist, id)
+	} else {
+		delete(cs.items, id)
+	}
 
 	cs.shardLock.Unlock()
 

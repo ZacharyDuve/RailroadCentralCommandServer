@@ -16,9 +16,9 @@ import (
 // )
 
 const (
-	ErrFmtMsgUnableToSaveAlreadyExist   string = "unable to save %s as it already exists"
-	ErrFmtMsgUnableToLoadDoesNotExist   string = "unable to load %s as it does not exist"
-	ErrFmtMsgUnableToDeleteDoesNotExist string = "unable to delete %s as it does not exist"
+	ErrFmtMsgUnableToSaveAlreadyExist   string = "unable to save %v as it already exists"
+	ErrFmtMsgUnableToLoadDoesNotExist   string = "unable to load %v as it does not exist"
+	ErrFmtMsgUnableToDeleteDoesNotExist string = "unable to delete %v as it does not exist"
 )
 
 type Storable[I cmp.Ordered] interface {
