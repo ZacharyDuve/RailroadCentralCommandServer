@@ -17,6 +17,18 @@ type Event[I cmp.Ordered, T any] struct {
 	payload T
 }
 
+func (e *Event[I, T]) ID() I {
+	return e.eventID
+}
+
+func (e *Event[I, T]) Payload() T {
+	return e.payload
+}
+
+func (e *Event[I, T]) SendTime() time.Time {
+	return e.sendTime
+}
+
 type EventBuilder[I cmp.Ordered, T any] struct {
 	eventSendTimeFunc func() time.Time
 }
